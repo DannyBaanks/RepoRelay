@@ -1,8 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Any, Optional
-import json
+from typing import Any
 
 
 class EventType(str, Enum):
@@ -70,11 +69,11 @@ class Commit:
 class WorkflowJob:
     id: int
     name: str
-    conclusion: Optional[WorkflowConclusion]
+    conclusion: WorkflowConclusion | None
     status: str
     html_url: str
-    started_at: Optional[datetime]
-    completed_at: Optional[datetime]
+    started_at: datetime | None
+    completed_at: datetime | None
     run_id: int
     run_attempt: int
 
@@ -102,12 +101,12 @@ class WorkflowJob:
 class CheckRun:
     id: int
     name: str
-    conclusion: Optional[WorkflowConclusion]
+    conclusion: WorkflowConclusion | None
     status: str
     html_url: str
-    started_at: Optional[datetime]
-    completed_at: Optional[datetime]
-    output: Optional[dict[str, Any]]
+    started_at: datetime | None
+    completed_at: datetime | None
+    output: dict[str, Any] | None
 
     @classmethod
     def from_github(cls, data: dict[str, Any]) -> "CheckRun":
@@ -171,11 +170,11 @@ class NormalizedEvent:
     event_type: EventType
     repository: Repository
     timestamp: datetime
-    workflow_job: Optional[WorkflowJob] = None
-    check_run: Optional[CheckRun] = None
-    pull_request: Optional[PullRequest] = None
-    pr_action: Optional[PRAction] = None
-    commit: Optional[Commit] = None
+    workflow_job: WorkflowJob | None = None
+    check_run: CheckRun | None = None
+    pull_request: PullRequest | None = None
+    pr_action: PRAction | None = None
+    commit: Commit | None = None
     raw_payload: dict[str, Any] = None
 
 

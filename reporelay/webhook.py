@@ -1,15 +1,15 @@
-import hmac
 import hashlib
-from fastapi import Request, HTTPException, Header
-from typing import Optional
+import hmac
 import json
 
+from fastapi import Header, HTTPException, Request
+
 from .config import get_config
-from .events import normalize_event, NormalizedEvent
-from .state import StateStore, EventState
+from .events import normalize_event
+from .state import EventState, StateStore
 
 
-async def verify_signature(request: Request, x_hub_signature_256: Optional[str] = Header(None)) -> bytes:
+async def verify_signature(request: Request, x_hub_signature_256: str | None = Header(None)) -> bytes:
     config = get_config()
     if not config.github_webhook_secret:
         raise HTTPException(status_code=500, detail="Webhook secret not configured")
@@ -29,7 +29,7 @@ async def process_webhook(
     request: Request,
     x_github_delivery: str = Header(...),
     x_github_event: str = Header(...),
-    x_hub_signature_256: Optional[str] = Header(None),
+    x_hub_signature_256: str | None = Header(None),
 ) -> dict:
     config = get_config()
     state_store = StateStore(config.google_cloud_project, config.firestore_database)

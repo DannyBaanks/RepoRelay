@@ -1,21 +1,19 @@
-import hashlib
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request, BackgroundTasks, Depends
+
+from fastapi import BackgroundTasks, FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-from typing import Optional
 
+from .agent import RepoRelayAgent
 from .config import get_config
-from .webhook import process_webhook
-from .events import NormalizedEvent, normalize_event, EventType
-from .state import StateStore, EventState, Retryable
-from .evidence import EvidenceGatherer, CIEvidence, PREvidence
+from .events import EventType, NormalizedEvent, normalize_event
+from .evidence import EvidenceGatherer
+from .executor import ActionExecutor
+from .policy import PolicyEngine
+from .state import EventState, Retryable, StateStore
 from .tools.github_read import GitHubReadClient
 from .tools.github_write import GitHubWriteClient
-from .agent import RepoRelayAgent
-from .policy import PolicyEngine
-from .executor import ActionExecutor
-
+from .webhook import process_webhook
 
 config = get_config()
 state_store = StateStore(config.google_cloud_project, config.firestore_database)

@@ -1,8 +1,8 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Any, Optional
-import json
+from typing import Any
+
 from google.cloud import firestore
 
 
@@ -30,13 +30,13 @@ class EventRecord:
     created_at: datetime
     updated_at: datetime
     payload_hash: str
-    action_taken: Optional[str] = None
-    action_result: Optional[dict[str, Any]] = None
-    error: Optional[str] = None
+    action_taken: str | None = None
+    action_result: dict[str, Any] | None = None
+    error: str | None = None
     retryable: Retryable = Retryable.UNKNOWN
     retry_count: int = 0
-    github_issue_number: Optional[int] = None
-    github_comment_id: Optional[int] = None
+    github_issue_number: int | None = None
+    github_comment_id: int | None = None
 
 
 class StateStore:
@@ -61,13 +61,13 @@ class StateStore:
         self._doc_ref(delivery_id).set(self._to_dict(record))
         return record
 
-    def get(self, delivery_id: str) -> Optional[EventRecord]:
+    def get(self, delivery_id: str) -> EventRecord | None:
         doc = self._doc_ref(delivery_id).get()
         if not doc.exists:
             return None
         return self._from_dict(doc.to_dict())
 
-    def update_state(self, delivery_id: str, state: EventState, **kwargs) -> Optional[EventRecord]:
+    def update_state(self, delivery_id: str, state: EventState, **kwargs) -> EventRecord | None:
         doc_ref = self._doc_ref(delivery_id)
         doc = doc_ref.get()
         if not doc.exists:
@@ -92,19 +92,19 @@ class StateStore:
         doc_ref.set(self._to_dict(updated))
         return updated
 
-    def mark_investigating(self, delivery_id: str) -> Optional[EventRecord]:
+    def mark_investigating(self, delivery_id: str) -> EventRecord | None:
         return self.update_state(delivery_id, EventState.INVESTIGATING)
 
-    def mark_action_proposed(self, delivery_id: str, action_taken: str) -> Optional[EventRecord]:
+    def mark_action_proposed(self, delivery_id: str, action_taken: str) -> EventRecord | None:
         return self.update_state(delivery_id, EventState.ACTION_PROPOSED, action_taken=action_taken)
 
     def mark_action_executed(
         self,
         delivery_id: str,
         action_result: dict[str, Any],
-        github_issue_number: Optional[int] = None,
-        github_comment_id: Optional[int] = None,
-    ) -> Optional[EventRecord]:
+        github_issue_number: int | None = None,
+        github_comment_id: int | None = None,
+    ) -> EventRecord | None:
         return self.update_state(
             delivery_id,
             EventState.ACTION_EXECUTED,
@@ -115,7 +115,7 @@ class StateStore:
 
     def mark_failed(
         self, delivery_id: str, error: str, retryable: Retryable = Retryable.UNKNOWN
-    ) -> Optional[EventRecord]:
+    ) -> EventRecord | None:
         record = self.get(delivery_id)
         if not record:
             return None
@@ -128,7 +128,7 @@ class StateStore:
             retry_count=new_retry_count,
         )
 
-    def mark_needs_human(self, delivery_id: str, error: str) -> Optional[EventRecord]:
+    def mark_needs_human(self, delivery_id: str, error: str) -> EventRecord | None:
         return self.update_state(delivery_id, EventState.NEEDS_HUMAN, error=error)
 
     def _to_dict(self, record: EventRecord) -> dict[str, Any]:

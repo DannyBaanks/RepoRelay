@@ -3,8 +3,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from unittest.mock import patch
+
 import pytest
-from unittest.mock import Mock, patch
 
 
 @pytest.fixture(autouse=True)

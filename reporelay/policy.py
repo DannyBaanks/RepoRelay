@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
-from .events import NormalizedEvent, EventType, WorkflowConclusion, PRAction
-from .state import EventState, StateStore
+
 from .config import get_config
+from .events import EventType, NormalizedEvent, PRAction, WorkflowConclusion
+from .state import EventState, StateStore
 
 
 class PolicyDecision(str, Enum):

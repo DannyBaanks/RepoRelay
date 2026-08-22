@@ -1,20 +1,20 @@
-import os
-from typing import Any, Optional
+from typing import Any
+
 from github import Github, GithubIntegration
+from github.CheckRun import CheckRun
+from github.Commit import Commit as GHCommit
+from github.PullRequest import PullRequest as GHPullRequest
 from github.Repository import Repository as GHRepository
 from github.WorkflowJob import WorkflowJob
-from github.CheckRun import CheckRun
-from github.PullRequest import PullRequest as GHPullRequest
-from github.Commit import Commit as GHCommit
 
-from .config import get_config
+from ..config import get_config
 
 
 class GitHubReadClient:
     def __init__(self):
         self.config = get_config()
-        self._integration: Optional[GithubIntegration] = None
-        self._installation_client: Optional[Github] = None
+        self._integration: GithubIntegration | None = None
+        self._installation_client: Github | None = None
 
     def _get_installation_client(self, installation_id: int) -> Github:
         if not self._integration:

@@ -1,18 +1,19 @@
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
+
+from .events import CheckRun, NormalizedEvent, WorkflowJob
 from .tools.github_read import GitHubReadClient
-from .events import NormalizedEvent, WorkflowJob, CheckRun, PullRequest
 
 
 @dataclass(frozen=True)
 class CIEvidence:
-    workflow_name: Optional[str] = None
-    job_name: Optional[str] = None
-    conclusion: Optional[str] = None
-    html_url: Optional[str] = None
-    log_excerpt: Optional[str] = None
-    failed_step: Optional[str] = None
-    error_message: Optional[str] = None
+    workflow_name: str | None = None
+    job_name: str | None = None
+    conclusion: str | None = None
+    html_url: str | None = None
+    log_excerpt: str | None = None
+    failed_step: str | None = None
+    error_message: str | None = None
 
 
 @dataclass(frozen=True)
@@ -97,7 +98,7 @@ class EvidenceGatherer:
             error_message=error_message,
         )
 
-    def _extract_failure(self, log: str) -> tuple[Optional[str], Optional[str]]:
+    def _extract_failure(self, log: str) -> tuple[str | None, str | None]:
         lines = log.splitlines()
         for i, line in enumerate(lines):
             lower = line.lower()
@@ -108,7 +109,7 @@ class EvidenceGatherer:
 
     def gather_pr_evidence(
         self, installation_id: int, owner: str, repo: str, event: NormalizedEvent
-    ) -> Optional[PREvidence]:
+    ) -> PREvidence | None:
         if not event.pull_request:
             return None
 

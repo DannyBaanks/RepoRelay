@@ -1,28 +1,21 @@
-import pytest
 import hashlib
 import hmac
 import json
-from unittest.mock import Mock, patch, AsyncMock
 from datetime import datetime
+from unittest.mock import Mock, patch
 
+import pytest
+
+from reporelay.agent import ActionProposal
 from reporelay.config import Config
 from reporelay.events import (
-    normalize_event,
     EventType,
-    WorkflowConclusion,
     PRAction,
-    Repository,
-    Commit,
-    WorkflowJob,
-    CheckRun,
-    PullRequest,
-    NormalizedEvent,
+    WorkflowConclusion,
+    normalize_event,
 )
-from reporelay.state import StateStore, EventRecord, EventState, Retryable
-from reporelay.policy import PolicyEngine, PolicyResult, PolicyDecision
-from reporelay.evidence import CIEvidence, PREvidence
-from reporelay.agent import ActionProposal
-from reporelay.executor import ActionExecutor, ActionResult
+from reporelay.policy import PolicyDecision, PolicyEngine
+from reporelay.state import EventRecord, EventState, StateStore
 
 
 class TestEventNormalization:
@@ -108,7 +101,15 @@ class TestEventNormalization:
         assert event.pull_request.number == 42
 
     def test_normalize_unsupported_event_raises(self):
-        payload = {"repository": {"full_name": "testowner/testrepo"}}
+        payload = {
+            "repository": {
+                "owner": {"login": "testowner"},
+                "name": "testrepo",
+                "full_name": "testowner/testrepo",
+                "html_url": "https://github.com/testowner/testrepo",
+                "updated_at": "2026-08-22T12:00:00Z",
+            }
+        }
         with pytest.raises(ValueError):
             normalize_event("delivery-999", "unsupported_event", payload)
 

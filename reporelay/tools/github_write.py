@@ -1,17 +1,15 @@
-from typing import Any, Optional
 from github import Github, GithubIntegration
-from github.Repository import Repository as GHRepository
 from github.Issue import Issue
-from github.PullRequest import PullRequest as GHPullRequest
 from github.IssueComment import IssueComment
+from github.Repository import Repository as GHRepository
 
-from .config import get_config
+from ..config import get_config
 
 
 class GitHubWriteClient:
     def __init__(self):
         self.config = get_config()
-        self._integration: Optional[GithubIntegration] = None
+        self._integration: GithubIntegration | None = None
 
     def _get_installation_client(self, installation_id: int) -> Github:
         if not self._integration:
@@ -43,10 +41,10 @@ class GitHubWriteClient:
         owner: str,
         name: str,
         issue_number: int,
-        title: Optional[str] = None,
-        body: Optional[str] = None,
-        labels: Optional[list[str]] = None,
-        state: Optional[str] = None,
+        title: str | None = None,
+        body: str | None = None,
+        labels: list[str] | None = None,
+        state: str | None = None,
     ) -> Issue:
         repo = self.get_repository(installation_id, owner, name)
         issue = repo.get_issue(issue_number)
@@ -105,7 +103,7 @@ class GitHubWriteClient:
         owner: str,
         name: str,
         commit_sha: str,
-    ) -> Optional[Issue]:
+    ) -> Issue | None:
         repo = self.get_repository(installation_id, owner, name)
         issues = repo.get_issues(
             state="open",
@@ -123,7 +121,7 @@ class GitHubWriteClient:
         name: str,
         pr_number: int,
         marker: str = "reporelay-readiness",
-    ) -> Optional[IssueComment]:
+    ) -> IssueComment | None:
         repo = self.get_repository(installation_id, owner, name)
         pr = repo.get_pull(pr_number)
         for comment in pr.get_issue_comments():

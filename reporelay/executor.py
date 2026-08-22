@@ -1,19 +1,20 @@
 from dataclasses import dataclass
-from typing import Any, Optional
-from .tools.github_write import GitHubWriteClient
-from .events import NormalizedEvent
+from typing import Any
+
 from .agent import ActionProposal
-from .policy import PolicyEngine, PolicyResult, PolicyDecision
+from .events import NormalizedEvent
+from .policy import PolicyDecision, PolicyEngine
+from .tools.github_write import GitHubWriteClient
 
 
 @dataclass(frozen=True)
 class ActionResult:
     success: bool
     action_type: str
-    github_issue_number: Optional[int] = None
-    github_comment_id: Optional[int] = None
-    error: Optional[str] = None
-    details: Optional[dict[str, Any]] = None
+    github_issue_number: int | None = None
+    github_comment_id: int | None = None
+    error: str | None = None
+    details: dict[str, Any] | None = None
 
 
 class ActionExecutor:

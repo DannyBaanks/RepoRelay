@@ -1,33 +1,32 @@
 import json
 from dataclasses import dataclass
-from typing import Any, Optional
+
 from google.adk.agents import Agent
 from google.adk.models.lite_llm import LiteLlm
-from google.adk.tools import FunctionTool
 
 from .config import get_config
 from .events import NormalizedEvent
 from .evidence import CIEvidence, PREvidence
-from .policy import PolicyEngine, PolicyResult, PolicyDecision
+from .policy import PolicyEngine
 
 
 @dataclass(frozen=True)
 class ActionProposal:
     action: str
-    title: Optional[str] = None
-    body: Optional[str] = None
-    labels: Optional[list[str]] = None
-    reason: Optional[str] = None
-    confidence: Optional[str] = None
-    evidence_refs: Optional[list[str]] = None
-    marker: Optional[str] = None
+    title: str | None = None
+    body: str | None = None
+    labels: list[str] | None = None
+    reason: str | None = None
+    confidence: str | None = None
+    evidence_refs: list[str] | None = None
+    marker: str | None = None
 
 
 class RepoRelayAgent:
     def __init__(self, policy_engine: PolicyEngine):
         self.policy_engine = policy_engine
         self.config = get_config()
-        self._agent: Optional[Agent] = None
+        self._agent: Agent | None = None
 
     def _get_agent(self) -> Agent:
         if self._agent is None:
