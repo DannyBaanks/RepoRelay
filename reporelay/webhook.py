@@ -63,7 +63,7 @@ async def process_webhook(
         state_store.mark_needs_human(x_github_delivery, f"Unsupported event: {e}")
         return {"status": "rejected", "reason": str(e)}
 
-    record = state_store.create_received(
+    state_store.create_received(
         x_github_delivery, x_github_event, repo_full_name, payload_hash
     )
 

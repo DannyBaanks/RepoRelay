@@ -1,3 +1,4 @@
+import json
 from contextlib import asynccontextmanager
 
 from fastapi import BackgroundTasks, FastAPI, Request
@@ -163,7 +164,6 @@ async def retry_event(req: RetryRequest):
     if record.retry_count >= config.max_retries:
         return JSONResponse(content={"error": "Max retries exceeded"}, status_code=400)
 
-    body = b""  # Would need to store original payload for true retry
     state_store.update_state(req.delivery_id, EventState.RECEIVED, error=None)
     
     return {"status": "queued_for_retry", "delivery_id": req.delivery_id}
@@ -189,6 +189,3 @@ async def get_event(delivery_id: str):
         "github_issue_number": record.github_issue_number,
         "github_comment_id": record.github_comment_id,
     }
-
-
-import json
