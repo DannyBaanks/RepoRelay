@@ -128,7 +128,7 @@ class TestPolicyEngine:
                 github_webhook_secret="secret",
                 google_cloud_project="proj",
                 firestore_database="(default)",
-                gemini_model="gemini-1.5-flash",
+                gemini_model="gemini-3.5-flash",
                 allowed_repositories=[],
             )
             return PolicyEngine(mock_state_store)

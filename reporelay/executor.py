@@ -37,27 +37,29 @@ class ActionExecutor:
                 action_type=proposal.action,
                 error=f"Policy rejected: {validation.reason}",
             )
-
         try:
             if proposal.action == "create_issue":
                 return self._create_issue(proposal, installation_id, owner, repo, event)
-            elif proposal.action == "create_pr_comment":
-                return self._create_pr_comment(proposal, installation_id, owner, repo, event)
-            elif proposal.action == "update_issue":
-                return self._update_issue(proposal, installation_id, owner, repo, event)
-            elif proposal.action == "update_pr_comment":
-                return self._update_pr_comment(proposal, installation_id, owner, repo, event)
-            else:
-                return ActionResult(
-                    success=False,
-                    action_type=proposal.action,
-                    error=f"Unknown action: {proposal.action}",
+            if proposal.action == "create_pr_comment":
+                return self._create_pr_comment(
+                    proposal, installation_id, owner, repo, event
                 )
-        except Exception as e:
+            if proposal.action == "update_issue":
+                return self._update_issue(proposal, installation_id, owner, repo, event)
+            if proposal.action == "update_pr_comment":
+                return self._update_pr_comment(
+                    proposal, installation_id, owner, repo, event
+                )
             return ActionResult(
                 success=False,
                 action_type=proposal.action,
-                error=str(e),
+                error=f"Unknown action: {proposal.action}",
+            )
+        except Exception as exc:
+            return ActionResult(
+                success=False,
+                action_type=proposal.action,
+                error=str(exc),
             )
 
     def _create_issue(
@@ -73,7 +75,10 @@ class ActionExecutor:
         )
         if existing:
             updated = self.write_client.update_issue(
-                installation_id, owner, repo, existing.number,
+                installation_id,
+                owner,
+                repo,
+                existing.number,
                 title=proposal.title,
                 body=proposal.body,
                 labels=proposal.labels,
@@ -84,9 +89,10 @@ class ActionExecutor:
                 github_issue_number=updated.number,
                 details={"updated": True},
             )
-
         issue = self.write_client.create_issue(
-            installation_id, owner, repo,
+            installation_id,
+            owner,
+            repo,
             title=proposal.title or "CI Triage",
             body=proposal.body or "",
             labels=proposal.labels or ["reporelay-triage"],
@@ -112,15 +118,21 @@ class ActionExecutor:
                 action_type="create_pr_comment",
                 error="No pull request in event",
             )
-
         existing = self.write_client.find_existing_pr_comment(
-            installation_id, owner, repo, event.pull_request.number,
-            marker=proposal.marker or "reporelay-readiness"
+            installation_id,
+            owner,
+            repo,
+            event.pull_request.number,
+            marker=proposal.marker or "reporelay-readiness",
         )
         if existing:
             updated = self.write_client.update_pr_comment(
-                installation_id, owner, repo, event.pull_request.number,
-                existing.id, proposal.body or ""
+                installation_id,
+                owner,
+                repo,
+                event.pull_request.number,
+                existing.id,
+                proposal.body or "",
             )
             return ActionResult(
                 success=True,
@@ -128,10 +140,12 @@ class ActionExecutor:
                 github_comment_id=updated.id,
                 details={"updated": True},
             )
-
         comment = self.write_client.create_pr_comment(
-            installation_id, owner, repo, event.pull_request.number,
-            proposal.body or ""
+            installation_id,
+            owner,
+            repo,
+            event.pull_request.number,
+            proposal.body or "",
         )
         return ActionResult(
             success=True,
@@ -148,6 +162,7 @@ class ActionExecutor:
         repo: str,
         event: NormalizedEvent,
     ) -> ActionResult:
+        del event
         if not proposal.title and not proposal.body and not proposal.labels:
             return ActionResult(
                 success=False,
@@ -162,7 +177,10 @@ class ActionExecutor:
                 error="Missing issue_number",
             )
         updated = self.write_client.update_issue(
-            installation_id, owner, repo, issue_num,
+            installation_id,
+            owner,
+            repo,
+            issue_num,
             title=proposal.title,
             body=proposal.body,
             labels=proposal.labels,
@@ -190,8 +208,12 @@ class ActionExecutor:
                 error="Missing comment_id or pr_number",
             )
         updated = self.write_client.update_pr_comment(
-            installation_id, owner, repo, pr_number,
-            comment_id, proposal.body or ""
+            installation_id,
+            owner,
+            repo,
+            pr_number,
+            comment_id,
+            proposal.body or "",
         )
         return ActionResult(
             success=True,

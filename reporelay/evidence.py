@@ -1,8 +1,11 @@
+import logging
 from dataclasses import dataclass
 from typing import Any
 
 from .events import CheckRun, NormalizedEvent, WorkflowJob
 from .tools.github_read import GitHubReadClient
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -59,8 +62,8 @@ class EvidenceGatherer:
                     installation_id, owner, repo, job.id, max_lines=200
                 )
                 failed_step, error_message = self._extract_failure(log_excerpt)
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("Failed to gather workflow job logs: %s", exc)
 
         return CIEvidence(
             job_name=job.name,
@@ -86,8 +89,8 @@ class EvidenceGatherer:
                 if not log_excerpt and check.output:
                     log_excerpt = check.output.get("summary", "") + "\n" + check.output.get("text", "")
                 failed_step, error_message = self._extract_failure(log_excerpt)
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("Failed to gather check run logs: %s", exc)
 
         return CIEvidence(
             job_name=check.name,
@@ -165,6 +168,4 @@ class EvidenceGatherer:
         doc_patterns = [".md", ".rst", "README", "CHANGELOG", "docs/"]
         source_files = [f for f in files if f["filename"].endswith((".py", ".js", ".ts", ".go", ".rs"))]
         doc_files = [f for f in files if any(p in f["filename"] for p in doc_patterns)]
-        if source_files and not doc_files:
-            return True
-        return False
+        return bool(source_files and not doc_files)

@@ -1,135 +1,95 @@
-# RepoRelay Architecture Diagram
+# RepoRelay Architecture
 
-```mermaid
-flowchart TD
-    subgraph GH[GitHub]
-        WH[Webhook Events]
-        API[GitHub REST API]
-    end
+## Goal
 
-    subgraph GCP[Google Cloud Platform]
-        CR[Cloud Run: reporelay]
-        FS[Firestore: reporelay_events]
-        ADK[Google ADK + Gemini 1.5 Flash]
-    end
+RepoRelay turns signed GitHub repository events into one narrow, policy-checked maintenance action: a RepoRelay triage issue or PR-readiness comment.
 
-    WH -->|HTTPS POST\nX-Hub-Signature-256| CR
-    CR -->|Verify Signature| CR
-    CR -->|Normalize Event| CR
-    CR -->|Check Idempotency\nDelivery ID| FS
-    FS -->|State: received| CR
-    CR -->|Investigate| ADK
-    ADK -->|Read Evidence| API
-    API -->|Logs, Checks, Diffs| ADK
-    ADK -->|Typed Action Proposal| CR
-    CR -->|Policy Allowlist\nValidation| CR
-    CR -->|Execute Action| API
-    API -->|Issue/Comment Created| CR
-    CR -->|Persist Outcome| FS
-    FS -->|State: action_executed| CR
+## Flow
 
-    classDef gh fill:#f9f9f9,stroke:#333,stroke-width:2px;
-    classDef gcp fill:#e8f0fe,stroke:#1a73e8,stroke-width:2px;
-    classDef process fill:#fff3e0,stroke:#f57c00,stroke-width:2px;
-
-    class GH gh;
-    class GCP gcp;
-    class CR,ADK,FS process;
+```text
+GitHub App
+  │ signed webhook
+  ▼
+/events/github (Cloud Run)
+  ├─ HMAC SHA-256 verification
+  ├─ atomic Firestore delivery claim
+  ├─ repository allowlist
+  ├─ event normalization
+  └─ minimal retry context
+  ▼
+Background dispatcher
+  ├─ CI/PR evidence collector
+  ├─ Google ADK InMemoryRunner
+  └─ Gemini 3.5 Flash
+  ▼
+ActionProposal
+  ▼
+PolicyEngine (deterministic)
+  ▼
+ActionExecutor
+  ├─ create/update RepoRelay issue
+  └─ create/update RepoRelay PR comment
+  ▼
+Firestore terminal state
 ```
 
-## Component Details
+## Public vs protected HTTP surface
 
-### Event Flow
+`POST /events/github` is designed for public Cloud Run ingress because GitHub must reach it. Authenticity is established with the GitHub webhook HMAC signature.
 
-1. **GitHub Webhook** → Cloud Run `/events/github`
-   - Events: `workflow_job`, `check_run`, `pull_request`
-   - Signature verification (HMAC SHA256)
+`GET /health` is public and does not initialize Firestore.
 
-2. **Normalization** → `NormalizedEvent` dataclass
-   - Extracts repository, commit, job/check/PR data
-   - Unified schema for all event types
+`POST /admin/retry` and `GET /admin/events/{delivery_id}` require `X-RepoRelay-Admin-Token`. If `ADMIN_TOKEN` is missing, the admin API is disabled rather than silently public.
 
-3. **Idempotency Check** → Firestore
-   - Key: GitHub `X-GitHub-Delivery` header
-   - States: `received` → `investigating` → `action_proposed` → `action_executed` | `failed` | `needs_human`
+## Idempotency
 
-4. **Investigation** → Google ADK Agent
-   - Gemini 1.5 Flash model
-   - Tools: GitHub read operations (logs, checks, files, diffs)
-   - Output: Typed `ActionProposal` JSON
+The GitHub `X-GitHub-Delivery` value is the Firestore document ID. RepoRelay claims it with `DocumentReference.create()`, which fails when the document already exists. This removes the previous check-then-set race where two concurrent deliveries could both pass an existence check.
 
-5. **Policy Validation** → Deterministic Allowlist
-   - Only `create_issue`, `update_issue`, `create_pr_comment`, `update_pr_comment`
-   - Required labels/markers enforced
-   - Rejects malformed or unsafe proposals
+This is an atomic **ingress delivery claim**. It is not a theorem of exactly-once behavior across GitHub, Gemini, Firestore, and every network boundary.
 
-6. **Execution** → GitHub API
-   - Creates/updates triage issue (`reporelay-triage` label)
-   - Creates/updates PR comment (`reporelay-readiness` marker)
-   - Idempotent: finds existing by commit SHA or marker
+## Retry
 
-7. **State Persistence** → Firestore
-   - Records outcome, GitHub IDs, evidence refs
-   - Enables retry, audit, demo replay
+On an accepted event RepoRelay stores only:
 
-### Data Models
+- the normalized event fields required by the handlers,
+- the GitHub App installation ID.
 
-```
-EventRecord (Firestore)
-├── delivery_id (PK)
-├── event_type
-├── repository
-├── state: received | investigating | action_proposed | action_executed | failed | needs_human
-├── created_at, updated_at
-├── payload_hash
-├── action_taken
-├── action_result
-├── error
-├── retryable: yes | no | unknown
-├── retry_count
-├── github_issue_number
-└── github_comment_id
+It intentionally does not persist the full raw webhook solely for retry.
+
+`/admin/retry` uses a Firestore transaction to claim an eligible failed event, reconstructs the normalized event, and schedules the same dispatcher again. Concurrent retry requests cannot both claim the same failed state.
+
+## Agent runtime
+
+The agent is a Google ADK `Agent` backed by `Gemini(model="gemini-3.5-flash")` and executed through `InMemoryRunner.run_async`. The model returns a typed JSON proposal. It does not directly call GitHub write tools.
+
+The deterministic `PolicyEngine` re-validates every proposed write before `ActionExecutor` can issue it.
+
+## State machine
+
+```text
+received
+   ↓
+investigating
+   ↓
+action_proposed
+   ├─→ action_executed
+   ├─→ failed
+   └─→ needs_human
+
+failed / needs_human
+   └─ protected atomic retry claim → received
 ```
 
-### Safety Boundaries
+Unexpected background exceptions are converted to `failed`, preventing abandoned `investigating` records.
 
-| Allowed | Forbidden (v1) |
-|---------|----------------|
-| Read repo metadata | Merge PRs |
-| Read commits/diffs | Push code |
-| Read CI/check data | Force-push |
-| Read bounded logs | Change branch protection |
-| Create/update triage issue | Modify repo settings |
-| Create/update PR comment | Publish releases |
-| Apply `reporelay-*` labels | Delete branches/issues |
-| Persist workflow state | Rotate credentials |
+## Background execution boundary
 
-### Deployment Topology
+The current hackathon implementation uses FastAPI `BackgroundTasks`. It is intentionally documented as a demo/runtime boundary: it keeps webhook acknowledgement fast but is not a durable external queue. For crash-safe production execution, dispatch should move to Cloud Tasks, Pub/Sub, or another durable workflow service.
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     Cloud Run (us-central1)                 │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │  Container: python:3.12-slim                         │   │
-│  │  - FastAPI app (uvicorn, 1 worker)                  │   │
-│  │  - Google ADK agent (Gemini 1.5 Flash)              │   │
-│  │  - PyGithub client (App auth)                       │   │
-│  │  - Firestore client                                 │   │
-│  └─────────────────────────────────────────────────────┘   │
-│                         │                                   │
-│         ┌───────────────┼───────────────┐                   │
-│         ▼               ▼               ▼                   │
-│    ┌─────────┐    ┌─────────────┐ ┌──────────┐             │
-│    │ Firestore│    │ GitHub API  │ │ Vertex AI│             │
-│    │ (state)  │    │ (actions)   │ │ (Gemini) │             │
-│    └─────────┘    └─────────────┘ └──────────┘             │
-└─────────────────────────────────────────────────────────────┘
-```
+## Google Cloud
 
-### Scaling & Reliability
+- **Cloud Run:** container runtime and public webhook ingress
+- **Firestore:** event state, atomic delivery claims, retry context
+- **Vertex AI / Gemini API:** Gemini model access through Google ADK
 
-- **Cloud Run**: Auto-scales 0-N instances, concurrency 80
-- **Firestore**: Strong consistency, automatic indexing
-- **Retries**: Bounded exponential backoff (max 3, base 1s)
-- **Timeouts**: Webhook 10s, GitHub API 30s, Gemini 60s
-- **Monitoring**: Cloud Logging, Cloud Trace, Error Reporting
+The `/health` path remains usable without Firestore credentials because the Firestore client is created lazily on the first state operation.

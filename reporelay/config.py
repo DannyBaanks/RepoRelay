@@ -12,6 +12,7 @@ class Config:
     firestore_database: str
     gemini_model: str
     allowed_repositories: list[str]
+    admin_token: str = ""
     max_log_lines: int = 200
     max_retries: int = 3
     retry_base_delay_seconds: float = 1.0
@@ -26,8 +27,9 @@ class Config:
             github_webhook_secret=os.getenv("GITHUB_WEBHOOK_SECRET", ""),
             google_cloud_project=os.getenv("GOOGLE_CLOUD_PROJECT", ""),
             firestore_database=os.getenv("FIRESTORE_DATABASE", "(default)"),
-            gemini_model=os.getenv("GEMINI_MODEL", "gemini-1.5-flash"),
+            gemini_model=os.getenv("GEMINI_MODEL", "gemini-3.5-flash"),
             allowed_repositories=allowed_repos,
+            admin_token=os.getenv("ADMIN_TOKEN", ""),
             max_log_lines=int(os.getenv("MAX_LOG_LINES", "200")),
             max_retries=int(os.getenv("MAX_RETRIES", "3")),
             retry_base_delay_seconds=float(os.getenv("RETRY_BASE_DELAY_SECONDS", "1.0")),

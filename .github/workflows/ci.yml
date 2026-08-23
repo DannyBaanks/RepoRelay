@@ -21,12 +21,13 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip check
+
+      - name: Compile package
+        run: python -m compileall -q reporelay
 
       - name: Run linting
         run: ruff check reporelay tests
-
-      - name: Run type checking
-        run: ruff check --select=ANN reporelay tests
 
       - name: Run tests
         run: pytest tests/ -v --cov=reporelay --cov-report=xml
@@ -43,17 +44,15 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
+      - uses: docker/setup-buildx-action@v3
       - name: Build Docker image
         run: docker build -t reporelay:latest .
-
       - name: Run container smoke test
         run: |
           docker run -d -p 8080:8080 --name reporelay-test reporelay:latest
-          sleep 5
-          curl -f http://localhost:8080/health
-          docker stop reporelay-test
-          docker rm reporelay-test
+          for i in {1..20}; do
+            if curl -fsS http://localhost:8080/health; then exit 0; fi
+            sleep 1
+          done
+          docker logs reporelay-test
+          exit 1

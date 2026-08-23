@@ -1,98 +1,70 @@
-# Hackathon Provenance Documentation
+# RepoRelay — Hackathon Provenance
 
-## Project: RepoRelay
+## Event
 
-### Submission Period
-- Hackathon: All Things Agentic Hackathon
-- Devpost: https://allthingsagentichackathon.devpost.com/
-- Submission Period: August 2026
-- Deadline: August 31, 2026 — 5:00 PM Pacific Time
+- **Hackathon:** All Things Agentic Hackathon
+- **Category target:** Taskmaster
+- **Deadline:** August 31, 2026 at 5:00 PM Pacific Time
+- **Repository:** `DannyBaanks/RepoRelay`
 
-### Declaration of Originality
+## Creation evidence
 
-This project was created **entirely during the submission period** (August 2026) for the All Things Agentic Hackathon. No pre-existing code, private laboratory implementations, or forked products were incorporated into this repository.
+Repository history observed for this project begins on August 22, 2026, during the submission period. This document records the project history and current stack; it is not a substitute for the official rules or for Devpost's eligibility determination.
 
-### Git History
+No private ISyCo implementation is required by RepoRelay and no private local filesystem path is part of the public provenance record.
 
-The repository was initialized on August 22, 2026, with the first commit establishing the project structure. All subsequent commits represent work done during the hackathon period.
+## Submission stack
 
-```
-git log --oneline
-```
+| Component | Version / identity | Purpose |
+|---|---|---|
+| Gemini | `gemini-3.5-flash` | Agent reasoning model |
+| Google ADK | `google-adk[gcp]==2.6.3` | Agent definition and execution |
+| Cloud Run | Google Cloud | Hosted webhook/runtime |
+| Firestore | Google Cloud | Event state, atomic delivery claim, retry context |
+| FastAPI | ADK-compatible current range | HTTP webhook/admin surface |
+| PyGithub | `2.4.0` | GitHub App API access |
+| Python | 3.12 | Runtime |
 
-### Technologies Used (Mandatory Hackathon Stack)
+The official hackathon rules require Gemini 3.5 or newer, at least one Google agent framework, and at least one Google Cloud infrastructure service. RepoRelay's intended deployed stack satisfies those three technical categories when deployed as documented.
 
-| Component | Technology | Version | Purpose |
-|-----------|------------|---------|---------|
-| LLM | Gemini | 1.5 Flash (gemini-1.5-flash) | Primary reasoning model via Google ADK |
-| Agent Framework | Google ADK | 0.1.0 | Agent orchestration |
-| Cloud Runtime | Cloud Run | N/A | Serverless container hosting |
-| State Store | Firestore | N/A | Idempotency, event state, retry tracking |
-| Web Framework | FastAPI | 0.115.0 | ASGI webhook handler |
-| GitHub API | PyGithub | 2.4.0 | GitHub REST API client |
-| Language | Python | 3.12+ | Primary implementation language |
+## What was built for this project
 
-### No Pre-existing Code Incorporated
+- GitHub webhook signature verification and normalization
+- Firestore event state machine
+- atomic GitHub delivery claiming
+- bounded evidence collection
+- Google ADK agent integration
+- deterministic policy allowlist
+- GitHub issue/comment executor
+- protected admin inspection/retry path
+- Cloud Run container/deployment path
+- tests and documentation
 
-The following were **NOT** used:
-- No forked repositories
-- No copied private/internal implementations
-- No proprietary codebases
-- No starter templates beyond standard Python/FastAPI project structure
-- No boilerplate from other hackathon submissions
+## AI coding assistance disclosure
 
-### Standard Development Tools Used
+AI coding assistants were used for scaffolding, code generation, review, tests, and documentation. Generated material was incorporated into the repository as project work during the hackathon period. The public repository history remains the primary auditable timeline.
 
-The following standard tools were used (explicitly permitted by rules):
-- Git for version control
-- VS Code / Cursor as IDE
-- Python standard library
-- pip for dependency management
-- Docker for containerization
-- gcloud CLI for deployment
-- pytest for testing
-- ruff for linting
-
-### AI Coding Assistance
-
-AI coding assistants (including the model generating this documentation) were used for:
-- Code generation and scaffolding
-- Documentation writing
-- Test case generation
-- Architecture discussion
-
-All AI-generated code was reviewed, modified, and committed by human developers during the submission period.
-
-### Repository Initialization Timeline
-
-| Date | Action |
-|------|--------|
-| 2026-08-22 | Repository created at `C:\Development\ISyCo\git\RepoRelay` |
-| 2026-08-22 | Initial project structure committed |
-| 2026-08-22 | Core modules implemented (config, events, state, webhook) |
-| 2026-08-22 | GitHub tools (read/write) implemented |
-| 2026-08-22 | Evidence gathering, policy engine, agent, executor implemented |
-| 2026-08-22 | FastAPI app entry point created |
-| 2026-08-22 | Dockerfile, requirements, README, provenance docs added |
-
-### Verification Commands
+## Verification commands
 
 ```bash
-# Verify git history
 git log --oneline --all
-
-# Verify no pre-existing directories
-ls -la
-
-# Verify all source files created during submission period
-git ls-files | xargs -I {} sh -c 'echo "$(git log --format="%ci" -1 -- {}) {}"' | sort
+git status --short
+pytest tests/ -v
+ruff check reporelay tests
+docker build -t reporelay:local .
 ```
 
-### Disclosure Statement
+For submission evidence, also capture the running Cloud Run service and relevant Google Cloud console/log view in the demo video as required by the event rules.
 
-**No nontrivial pre-existing code was incorporated into this project.** All code in this repository was written during the hackathon submission period (August 2026) specifically for the All Things Agentic Hackathon Taskmaster category.
+## Explicit boundaries
 
----
+This provenance file does not claim:
 
-*Signed: RepoRelay Team*
-*Date: August 22, 2026*
+- that every third-party service call is exactly-once,
+- that FastAPI BackgroundTasks form a durable queue,
+- that Gemini diagnoses are objectively correct,
+- or that a local/test configuration proves a successful Cloud deployment.
+
+Those claims require their own evidence.
+
+*Updated: August 22, 2026*
