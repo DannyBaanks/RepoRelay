@@ -1,7 +1,6 @@
 from datetime import datetime
 from unittest.mock import Mock, patch
 
-import pytest
 from google.cloud.exceptions import Conflict
 
 from reporelay.config import Config
