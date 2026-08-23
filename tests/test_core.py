@@ -116,11 +116,11 @@ class TestEventNormalization:
 
 class TestPolicyEngine:
     @pytest.fixture
-    def mock_state_store(self):
+    def mock_state_store(self) -> Mock:
         return Mock(spec=StateStore)
 
     @pytest.fixture
-    def policy_engine(self, mock_state_store):
+    def policy_engine(self, mock_state_store: Mock) -> PolicyEngine:
         with patch("reporelay.policy.get_config") as mock_config:
             mock_config.return_value = Config(
                 github_app_id="1",
@@ -133,14 +133,16 @@ class TestPolicyEngine:
             )
             return PolicyEngine(mock_state_store)
 
-    def test_duplicate_delivery_noop(self, policy_engine, mock_state_store):
+    def test_duplicate_delivery_noop(
+        self, policy_engine: PolicyEngine, mock_state_store: Mock
+    ) -> None:
         mock_state_store.get.return_value = EventRecord(
             delivery_id="delivery-123",
             event_type="workflow_job",
             repository="testowner/testrepo",
             state=EventState.ACTION_EXECUTED,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
             payload_hash="hash",
         )
         event = Mock()
@@ -148,7 +150,9 @@ class TestPolicyEngine:
         result = policy_engine.evaluate(event, "delivery-123")
         assert result.decision == PolicyDecision.NOOP
 
-    def test_failed_workflow_job_proceed(self, policy_engine, mock_state_store):
+    def test_failed_workflow_job_proceed(
+        self, policy_engine: PolicyEngine, mock_state_store: Mock
+    ) -> None:
         mock_state_store.get.return_value = None
         event = Mock()
         event.event_type = EventType.WORKFLOW_JOB
@@ -157,7 +161,9 @@ class TestPolicyEngine:
         result = policy_engine.evaluate(event, "delivery-new")
         assert result.decision == PolicyDecision.PROCEED
 
-    def test_successful_workflow_job_noop(self, policy_engine, mock_state_store):
+    def test_successful_workflow_job_noop(
+        self, policy_engine: PolicyEngine, mock_state_store: Mock
+    ) -> None:
         mock_state_store.get.return_value = None
         event = Mock()
         event.event_type = EventType.WORKFLOW_JOB
@@ -166,7 +172,9 @@ class TestPolicyEngine:
         result = policy_engine.evaluate(event, "delivery-new")
         assert result.decision == PolicyDecision.NOOP
 
-    def test_pr_opened_proceed(self, policy_engine, mock_state_store):
+    def test_pr_opened_proceed(
+        self, policy_engine: PolicyEngine, mock_state_store: Mock
+    ) -> None:
         mock_state_store.get.return_value = None
         event = Mock()
         event.event_type = EventType.PULL_REQUEST
@@ -176,7 +184,9 @@ class TestPolicyEngine:
         result = policy_engine.evaluate(event, "delivery-new")
         assert result.decision == PolicyDecision.PROCEED
 
-    def test_draft_pr_noop(self, policy_engine, mock_state_store):
+    def test_draft_pr_noop(
+        self, policy_engine: PolicyEngine, mock_state_store: Mock
+    ) -> None:
         mock_state_store.get.return_value = None
         event = Mock()
         event.event_type = EventType.PULL_REQUEST
@@ -186,7 +196,7 @@ class TestPolicyEngine:
         result = policy_engine.evaluate(event, "delivery-new")
         assert result.decision == PolicyDecision.NOOP
 
-    def test_validate_create_issue_action(self, policy_engine):
+    def test_validate_create_issue_action(self, policy_engine: PolicyEngine) -> None:
         action = {
             "action": "create_issue",
             "title": "Test",
@@ -199,7 +209,9 @@ class TestPolicyEngine:
         result = policy_engine.validate_action(action)
         assert result.decision == PolicyDecision.PROCEED
 
-    def test_validate_create_issue_missing_label_reject(self, policy_engine):
+    def test_validate_create_issue_missing_label_reject(
+        self, policy_engine: PolicyEngine
+    ) -> None:
         action = {
             "action": "create_issue",
             "title": "Test",
@@ -212,14 +224,14 @@ class TestPolicyEngine:
         result = policy_engine.validate_action(action)
         assert result.decision == PolicyDecision.REJECT
 
-    def test_validate_unknown_action_reject(self, policy_engine):
+    def test_validate_unknown_action_reject(self, policy_engine: PolicyEngine) -> None:
         action = {"action": "merge_pr"}
         result = policy_engine.validate_action(action)
         assert result.decision == PolicyDecision.REJECT
 
 
 class TestActionProposal:
-    def test_parse_valid_create_issue(self):
+    def test_parse_valid_create_issue(self) -> None:
         json_str = json.dumps({
             "action": "create_issue",
             "title": "CI triage: test_failure on abc123",
@@ -233,7 +245,7 @@ class TestActionProposal:
         assert proposal.action == "create_issue"
         assert proposal.confidence == "high"
 
-    def test_parse_valid_create_pr_comment(self):
+    def test_parse_valid_create_pr_comment(self) -> None:
         json_str = json.dumps({
             "action": "create_pr_comment",
             "body": "## PR Readiness\n...",
@@ -246,13 +258,13 @@ class TestActionProposal:
 
 
 class TestWebhookSignature:
-    def test_verify_valid_signature(self):
+    def test_verify_valid_signature(self) -> None:
         secret = "test-secret"
         body = b'{"test": "payload"}'
         expected = "sha256=" + hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
         assert hmac.compare_digest(expected, expected)
 
-    def test_verify_invalid_signature(self):
+    def test_verify_invalid_signature(self) -> None:
         secret = "test-secret"
         body = b'{"test": "payload"}'
         expected = "sha256=" + hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
@@ -262,11 +274,13 @@ class TestWebhookSignature:
 
 class TestIdempotency:
     @pytest.fixture
-    def mock_firestore_client(self):
+    def mock_firestore_client(self) -> Mock:
         with patch("reporelay.state.firestore.Client") as mock:
             yield mock
 
-    def test_duplicate_delivery_prevents_double_action(self, mock_firestore_client):
+    def test_duplicate_delivery_prevents_double_action(
+        self, mock_firestore_client: Mock
+    ) -> None:
         mock_doc = Mock()
         mock_doc.exists = True
         mock_doc.to_dict.return_value = {
@@ -274,8 +288,8 @@ class TestIdempotency:
             "event_type": "workflow_job",
             "repository": "testowner/testrepo",
             "state": "action_executed",
-            "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow(),
+            "created_at": datetime.now(),
+            "updated_at": datetime.now(),
             "payload_hash": "hash",
             "action_taken": "create_issue",
             "action_result": {"action": "create_issue", "details": {"created": True}},
