@@ -183,6 +183,14 @@ RepoRelay demonstrates an event-driven autonomous maintenance workflow with cons
 
 See [`docs/HACKATHON_PROVENANCE.md`](docs/HACKATHON_PROVENANCE.md) for provenance and compliance evidence.
 
+## 2026-10-31 — newly versioned files
+
+Commit `591a15e` brings in two modules that were previously untracked:
+
+- `reporelay/boundaries_demo.py` — authority-boundary demo.
+- `reporelay/demo_walkthrough.py` — demo walkthrough.
+
+
 ## License
 
 MIT
